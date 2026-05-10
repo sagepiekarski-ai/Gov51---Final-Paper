@@ -1,0 +1,292 @@
+---
+title: "piekarski_gov51_final_paper"
+format: html
+editor: visual
+---
+
+# Can We Predict What NHL Players Are Likely To Have A Breakout Season? Evaluating MONEYPUCK
+
+#### By: Sage Piekarski
+
+Gov 51: Data Analysis and Politics
+
+Professor Cunningham
+
+2026 - 05 - 10
+
+## 1 Introduction
+
+When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+
+## 2 Data and Measurement
+
+### 2.1 The MONEYPUCK Dataset
+
+```{r}
+#clear the workspace and clear console
+rm(list=ls())
+cat('\014')
+
+#Install and load packages
+if (!require(tidyverse)) install.packages("tidyverse"); library(tidyverse)
+if (!require(dplyr)) install.packages("dplyr"); library(dplyr)
+if (!require(glmnet)) install.packages("glmnet");library(glmnet)
+if (!require(knitr)) install.packages("knitr");library(knitr)
+if (!require(scales)) install.packages("scales");library(scales)
+
+#read csv
+skaters_2008_to_2024 <- read.csv("Data/Raw/skaters_2008_to_2024.csv")
+
+#glimpse & understand data
+glimpse(skaters_2008_to_2024)
+```
+
+### 2.2 Data Cleansing and Breakout Idenitifcation
+
+You can add options to executable code like this
+
+```{r}
+#clean the data
+player_year <- skaters_2008_to_2024 %>% 
+  filter(situation == "all") %>% 
+  arrange(playerId, season) %>% 
+  group_by(playerId) %>% 
+  mutate(next_goals = lead(I_F_goals),
+         goal_change = next_goals - I_F_goals) %>% 
+  ungroup() %>% 
+  filter(!is.na(goal_change), games_played>0) %>% 
+  mutate(goals_per_game = I_F_goals / games_played,
+        shots_per_game = I_F_shotsOnGoal / games_played,
+        xgoals_per_game = I_F_xGoals / games_played)
+
+#define a breakout player
+breakout_threshold <- quantile(player_year$goal_change, 0.90, na.rm = TRUE)
+player_year <- player_year %>% 
+  mutate(breakout = ifelse(goal_change >= breakout_threshold, 1, 0))
+
+#check
+mean(player_year$breakout)
+breakout_threshold
+```
+
+The `echo: false` option disables the printing of code (only output is displayed).
+
+### 2.3 Descriptive Statistics
+
+```{r}
+#summary statistics table
+player_year |> 
+  summarise(`N` = n(),
+            `Breakout Rate (%)` = round(mean(breakout) * 100, 1),
+            `Mean Goals` = round(mean(I_F_goals, na.rm = TRUE), 1),
+            `Mean xGoals` = round(mean(I_F_xGoals, na.rm = TRUE), 1),
+            `Mean Shots on Goal` = round(mean(I_F_shotsOnGoal, na.rm = TRUE), 1),
+            `Mean Games Played` = round(mean(games_played, na.rm = TRUE), 1),
+            `Share Defensemen (%)` = round(mean(position == "D")*100, 1)) |>
+  pivot_longer(everything(), names_to = "Variable", values_to = "Value") |>
+  kable(caption = "Summary Statistics, MoneyPuck Dataset")
+
+```
+
+```{r}
+#Breakout Rate By Current Goal Total
+player_year |> 
+  mutate(goals_section = cut(I_F_goals, breaks = c(-Inf, 5, 15, 30, Inf), labels = c("0-5", "6-15", "16-30", "30+"))) |>
+  group_by(goals_section) |>
+  summarise(`N` = n(),
+            `Breakout Rate (%)` = round(mean(breakout) * 100, 1))|>
+  kable(caption = "Breakout Rate By Current Season Goal Total")
+```
+
+```{r}
+#correlations
+cor_table <- player_year %>% 
+  select(I_F_goals, next_goals, goal_change, I_F_xGoals, I_F_shotsOnGoal, games_played) %>%
+  cor(use = "complete.obs")
+cor_table
+```
+
+```{r}
+#For Positon Assumption
+position_summary <- player_year %>% 
+  group_by(position) %>% 
+  summarise(Rate = mean(breakout), N = n()) %>% 
+  arrange(desc(Rate))
+
+ggplot(position_summary, aes(x = Rate, y = reorder(position, Rate), fill = position == "D")) +
+geom_col(width = 0.6) +
+geom_text(aes(label = percent(Rate, accuracy = 0.1)), hjust = -0.1, size = 3.5) +
+scale_fill_manual(values = c("TRUE" = "#2166AC", "FALSE" = "#B2C8D9"), guide = "none") +
+scale_x_continuous(labels = percent_format(), limits = c(0, 0.65)) +
+labs(
+title = "Breakout Rates Vary Substantially by Position",
+subtitle = "Share with top 10% goal increase next season, unadjusted",
+x = "Breakout rate",
+y = NULL,
+caption = "Source: MoneyPuck"
+) +
+theme_minimal(base_size = 11) +
+theme(panel.grid.minor = element_blank())
+
+```
+
+```{r}
+#create a figure
+ggplot(player_year, aes(x = I_F_xGoals, y = goal_change)) +
+  geom_point(alpha = 0.4) +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "Current Season xGoals vs Next Season Goal Increase",
+       x = "Current Season Expected Goals",
+       y = "Next Season Goal Change")+
+  theme_minimal()
+```
+
+```{r}
+#better figure
+ggplot(player_year, aes(x = xgoals_per_game, y = goal_change)) +
+  geom_point(alpha = 0.4) +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "xGoals per Game vs Next Season Goal Increase",
+       x = "xGoals per Game",
+       y = "Next Season Goal Change")+
+  theme_minimal()
+```
+
+## 3 Prediction: From OLS to LOGIT to LASSO
+
+### 3.1 Train/Test Split
+
+3 Prediction:
+
+```{r}
+#trail/test split
+set.seed(123)
+train_info <- sample(1:nrow(player_year), 0.7*nrow(player_year))
+train <- player_year[train_info, ]
+test <- player_year[-train_info, ]
+cat("Training set:", nrow(train), "observations\n")
+cat("Test set:", nrow(test), "observations\n")
+
+
+```
+
+### 3.2 Baseline: OLS (Linear Probability Model)
+
+```{r}
+#basic ols
+mod1 <- lm(breakout ~ I_F_xGoals + I_F_shotsOnGoal + games_played + position, 
+           data = train)
+summary(mod1)
+
+# Predict on test set
+test$ols_pred <- predict(mod1, newdata = test)
+test$ols_class <- ifelse(test$ols_pred > 0.10, 1, 0)
+
+# Performance
+ols_rmse <- sqrt(mean((test$breakout - test$ols_pred)^2))
+ols_accuracy <- mean(test$ols_class == test$breakout)
+
+cat(sprintf("OLS — Test RMSE: %.4f | Accuracy: %.3f\n", ols_rmse, ols_accuracy))
+table(predicted = test$ols_class, actual = test$breakout)
+```
+
+### 3.3 LOGIT
+
+```{r}
+#logit model because binary
+logit <- glm(breakout ~ xgoals_per_game + shots_per_game + games_played + position,
+             data = train,
+             family = "binomial")
+summary(logit)
+
+#OOS pred
+
+test$pred_prob <- predict(logit, newdata = test, type = "response")
+test$pred_class <- ifelse(test$pred_prob > 0.10, 1, 0)
+
+logit_rmse <- sqrt(mean((test$breakout - test$pred_prob)^2))
+logit_accuracy <- mean(test$pred_class == test$breakout)
+
+cat(sprintf("LOGIT — Test RMSE: %.4f | Accuracy: %.3f\n", logit_rmse, logit_accuracy))
+table(predicted = test$pred_class, actual = test$breakout)
+```
+
+### 3.4 LASSO
+
+```{r}
+#LASSO
+x_train <- model.matrix(breakout ~ xgoals_per_game + shots_per_game + games_played + position, 
+                        data = train)
+y_train <- train$breakout
+
+x_test <- model.matrix(breakout ~ xgoals_per_game + shots_per_game + games_played + position, 
+                       data = test)
+
+#CV LASSO for lambda
+set.seed(42)
+lasso_cv <- cv.glmnet(x_train, y_train, family = "binomial", alpha =1)
+plot(lasso_cv)
+
+lambda1 <- lasso_cv$lambda.min
+
+#ideal lambda incl
+lasso1 <- glmnet(x_train, y_train, family = "binomial", alpha =1, lambda = lambda1)
+coef(lasso1)
+
+#predict with lambda min
+test$lasso_prob <- as.vector(predict(lasso1, newx = x_test, type = "response"))
+test$lasso_class <- ifelse(test$lasso_prob > 0.10, 1, 0)
+
+lasso_rmse <- sqrt(mean((test$breakout - test$lasso_prob)^2))
+lasso_accuracy <- mean(test$lasso_class == test$breakout)
+
+cat(sprintf("LASSO — lambda.min: %.4f | Test RMSE: %.4f | Accuracy: %.3f\n", 
+            lambda1, lasso_rmse, lasso_accuracy))
+
+table(predicted = test$lasso_class, actual = test$breakout)
+
+# Which variables survive?
+lasso_coef <- coef(lasso_cv, s = "lambda.min")
+nonzero <- lasso_coef[lasso_coef[, 1] != 0, , drop = FALSE]
+cat(sprintf("Nonzero coefficients: %d of %d\n"
+, nrow(nonzero) - 1, ncol(x_train)))
+```
+
+### 3.5 Comparing the Models
+
+```{r}
+tibble(Model= c("OLS (no regularization)", "Logit", "LASSO (logit, lambda.min)"),
+       `Test RMSE` = round(c(ols_rmse, logit_rmse, lasso_rmse), 4),
+       `Test Accuracy`= percent(c(ols_accuracy, logit_accuracy, lasso_accuracy), accuracy = 0.1)) %>%
+  kable(caption = "Out-of-sample prediction performance: OLS vs. Logit vs. LASSO")
+  
+```
+
+## 4 Fairness: Does the Modell Err Equally?
+
+```{r}
+# Use LASSO predictions (lambda.min)
+test |>
+  group_by(position) |>
+  summarise(N = n(),
+            `True positive rate` = round(mean(pred_class[breakout == 1] == 1), 3),
+            `False positive rate`= round(mean(pred_class[breakout == 0] == 1), 3),
+            `Accuracy`= round(mean(pred_class == breakout), 3),
+            .groups = "drop")|>
+kable(caption = "Logit prediction error rates by position False positive rate = share predicted breakout who did not breakout.")
+```
+
+## 5 Top Predicted Breakouts
+
+```{r}
+#get players
+predicted_breakouts <- test %>% 
+  arrange(desc(pred_prob)) %>% 
+  select(name, season, position, pred_prob, breakout) %>% 
+  head(25)
+knitr::kable(predicted_breakouts)
+```
+
+## 6 Limitations
+
+## 7 Conclusion
