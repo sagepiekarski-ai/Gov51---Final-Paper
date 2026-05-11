@@ -810,51 +810,58 @@ predicted    0    1
 <span id="cb54-2"><a href="#cb54-2" aria-hidden="true" tabindex="-1"></a>test <span class="sc">|&gt;</span></span>
 <span id="cb54-3"><a href="#cb54-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(position) <span class="sc">|&gt;</span></span>
 <span id="cb54-4"><a href="#cb54-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">N =</span> <span class="fu">n</span>(),</span>
-<span id="cb54-5"><a href="#cb54-5" aria-hidden="true" tabindex="-1"></a>            <span class="st">`</span><span class="at">True positive rate</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">round</span>(<span class="fu">mean</span>(pred_class[breakout <span class="sc">==</span> <span class="dv">1</span>] <span class="sc">==</span> <span class="dv">1</span>), <span class="dv">3</span>),</span>
-<span id="cb54-6"><a href="#cb54-6" aria-hidden="true" tabindex="-1"></a>            <span class="st">`</span><span class="at">False positive rate</span><span class="st">`</span><span class="ot">=</span> <span class="fu">round</span>(<span class="fu">mean</span>(pred_class[breakout <span class="sc">==</span> <span class="dv">0</span>] <span class="sc">==</span> <span class="dv">1</span>), <span class="dv">3</span>),</span>
-<span id="cb54-7"><a href="#cb54-7" aria-hidden="true" tabindex="-1"></a>            <span class="st">`</span><span class="at">Accuracy</span><span class="st">`</span><span class="ot">=</span> <span class="fu">round</span>(<span class="fu">mean</span>(pred_class <span class="sc">==</span> breakout), <span class="dv">3</span>),</span>
+<span id="cb54-5"><a href="#cb54-5" aria-hidden="true" tabindex="-1"></a>            <span class="st">`</span><span class="at">actual breakout rate</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">round</span>(<span class="fu">mean</span>(breakout), <span class="dv">3</span>),</span>
+<span id="cb54-6"><a href="#cb54-6" aria-hidden="true" tabindex="-1"></a>            <span class="st">`</span><span class="at">mean predicted proabbility</span><span class="st">`</span><span class="ot">=</span> <span class="fu">round</span>(<span class="fu">mean</span>(pred_prob), <span class="dv">3</span>),</span>
+<span id="cb54-7"><a href="#cb54-7" aria-hidden="true" tabindex="-1"></a>            <span class="st">`</span><span class="at">difference (pred - actual)</span><span class="st">`</span><span class="ot">=</span> <span class="fu">round</span>(<span class="fu">mean</span>(pred_prob) <span class="sc">-</span> <span class="fu">mean</span>(breakout), <span class="dv">3</span>),</span>
 <span id="cb54-8"><a href="#cb54-8" aria-hidden="true" tabindex="-1"></a>            <span class="at">.groups =</span> <span class="st">"drop"</span>)<span class="sc">|&gt;</span></span>
-<span id="cb54-9"><a href="#cb54-9" aria-hidden="true" tabindex="-1"></a><span class="fu">kable</span>(<span class="at">caption =</span> <span class="st">"Logit prediction error rates by position False positive rate = share predicted breakout who did not breakout."</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb54-9"><a href="#cb54-9" aria-hidden="true" tabindex="-1"></a><span class="fu">kable</span>(<span class="at">caption =</span> <span class="st">"Mean Breakout Predicted probability Vs. Actual Breakout Rate by Position"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <table class="caption-top table table-sm table-striped small">
-<caption>Logit prediction error rates by position False positive rate = share predicted breakout who did not breakout.</caption>
+<caption>Mean Breakout Predicted probability Vs. Actual Breakout Rate by Position</caption>
+<colgroup>
+<col style="width: 10%">
+<col style="width: 5%">
+<col style="width: 23%">
+<col style="width: 30%">
+<col style="width: 30%">
+</colgroup>
 <thead>
 <tr class="header">
 <th style="text-align: left;">position</th>
 <th style="text-align: right;">N</th>
-<th style="text-align: right;">True positive rate</th>
-<th style="text-align: right;">False positive rate</th>
-<th style="text-align: right;">Accuracy</th>
+<th style="text-align: right;">actual breakout rate</th>
+<th style="text-align: right;">mean predicted proabbility</th>
+<th style="text-align: right;">difference (pred - actual)</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
 <td style="text-align: left;">C</td>
 <td style="text-align: right;">1092</td>
-<td style="text-align: right;">0.921</td>
-<td style="text-align: right;">0.782</td>
-<td style="text-align: right;">0.324</td>
+<td style="text-align: right;">0.151</td>
+<td style="text-align: right;">0.156</td>
+<td style="text-align: right;">0.005</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">D</td>
 <td style="text-align: right;">1308</td>
-<td style="text-align: right;">0.029</td>
-<td style="text-align: right;">0.009</td>
-<td style="text-align: right;">0.966</td>
+<td style="text-align: right;">0.026</td>
+<td style="text-align: right;">0.036</td>
+<td style="text-align: right;">0.010</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">L</td>
 <td style="text-align: right;">685</td>
-<td style="text-align: right;">0.911</td>
-<td style="text-align: right;">0.849</td>
-<td style="text-align: right;">0.288</td>
+<td style="text-align: right;">0.180</td>
+<td style="text-align: right;">0.172</td>
+<td style="text-align: right;">-0.008</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">R</td>
 <td style="text-align: right;">631</td>
-<td style="text-align: right;">0.881</td>
-<td style="text-align: right;">0.762</td>
-<td style="text-align: right;">0.349</td>
+<td style="text-align: right;">0.173</td>
+<td style="text-align: right;">0.155</td>
+<td style="text-align: right;">-0.017</td>
 </tr>
 </tbody>
 </table>

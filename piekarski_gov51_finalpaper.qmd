@@ -12,15 +12,27 @@ Gov 51: Data Analysis and Politics
 
 Professor Cunningham
 
-2026 - 05 - 10
+2026 - 05 - 11
+
+<https://github.com/sagepiekarski-ai/Gov51---Final-Paper.git>
 
 ## 1 Introduction
 
-When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+The National Hockey League is growing faster than ever before. With an average 15% year over year growth in each individual teams' valuation, the average of team valuations has more than doubled from \$1billion in 2022 to \$2.2 billion in 2024. Certainly there is a spectrum of team valuations within these means, but both ends are experiencing large increases in their valuations. For instance, the Columbus Blue Jackets is the lowest valuated team in all of the NHL, yet there valuation has jumped 30% since 2024, reaching \$1.3 billion. On the flip side, the Toronto Maple Leafs continue to be the highest valuated team in the league, growing 16% since 2024, to a value of \$4.4 billion.
+
+All things considered, as the NHL continues to skyrocket into unchartered territory, the stakes and performances of each one of the 32 franchises becomes increasingly important. While there is a bounty of data provided detailing NHL statistics, like via MoneyPuck, modern day ice hockey statistics fail to provide complete predictive models of what players are most likely to have a standout season in the future.
+
+To that end, this paper seeks to use the detailled past performance statistics collected in MoneyPuck, to predict which NHL players have the highest probability of having a breakout season. Three questions guide the paper's progression: how well do observable performance statistics predict breakout rate, does shrinkage using LASSO improve prediction compared to a traditional LPM or Logit model, and does the model predict equally across positions?
+
+<https://www.forbes.com/sites/justinteitelbaum/2025/12/11/the-nhls-most-valuable-teams-2025/>
 
 ## 2 Data and Measurement
 
 ### 2.1 The MONEYPUCK Dataset
+
+The data used in this project comes from the MoneyPuck dataset. MoneyPuck data and its models were compiled and put together by Peter Tanner. The data used in this project consists of season-level data from the 2008/2009 season to the 2024/2025 season. We evaluate all players who played greater than zero games, and who were identified as skaters.
+
+The dataset contains 76,655 observations across 154 variables.
 
 ```{r}
 #clear the workspace and clear console
@@ -43,7 +55,25 @@ glimpse(skaters_2008_to_2024)
 
 ### 2.2 Data Cleansing and Breakout Idenitifcation
 
-You can add options to executable code like this
+The key variables used in our analysis from MoneyPuck are xgoals_per_game, shots_per_game, games_played, and position. Based on MoneyPuck variables, we create goal_change, goals_per_game, xgoals_per_game, shots_per_game, and breakout. Below you will find an explanation of each of these variables.
+
+**xgoals_per_game** - Expected goals per game for each player. MoneyPuck's Expected Goals Model determines this variable, and determines it to be "the chance of an unblocked shot attempt being a goal. For example, a rebound shot in the slot may have a 50% of going in and be worth 0.5 expected goals, while a shot from the blueline while short handed may be worth 0.01 expected goals."
+
+**shots_per_game** - Shots on goal per game.
+
+**games_played** - Number of gamed played in a given season.
+
+**postion** - Identification of a player's position: center, right wing, left wing, defenseman.
+
+**goal_change** - A player's next season goals minus current season goals.
+
+**goals_per_game** - Number of average goals scored per game by a player in a given season.
+
+**xgoals_per_game** - Number of average expected goals scored per game by a player in a given season.
+
+**shots_per_game** - Number of shots on goal per game by a player in a given season.
+
+**breakout** - binary variable, breakout players (1) are those players that rank in the top 10% of goal change and (0) if otherwise.
 
 ```{r}
 #clean the data
@@ -69,8 +99,6 @@ mean(player_year$breakout)
 breakout_threshold
 ```
 
-The `echo: false` option disables the printing of code (only output is displayed).
-
 ### 2.3 Descriptive Statistics
 
 ```{r}
@@ -88,6 +116,8 @@ player_year |>
 
 ```
 
+Once cleansing the data, the dataset follows 12,386 player-seasons. For instance, one player does not equate to one variable, but rather has one variable for each of the seasons they competed in. Based on this data and the summary statistics table above, the mean breakout rate is 11.7% indicating that for every 10 player seasons, slightly more than one is classified as a breakout season. The average goals scored per season is 8.4, the average expected goals per season is slightly less at 8.3. Across each player-season, there was an average of 89.2 shots on goal and each of these players played an average of 51.3 games. The average share of defensemen across player-seasons is 34.5%.
+
 ```{r}
 #Breakout Rate By Current Goal Total
 player_year |> 
@@ -98,6 +128,8 @@ player_year |>
   kable(caption = "Breakout Rate By Current Season Goal Total")
 ```
 
+We then bucket goals into four groups: 0-5, 6-15, 16-30, and 30+. Organizing data in such a manner allows us to see the direct association between goals scored this season and breakout rate percentage. This is a really important finding that alters later interpretations of out findings. As such, the "Breakout Rate by Current Season Goal Table" illuminates the fact that as goals scored increases beyond 6-15, probability of a breakout season decreases. In this way, those that scored an average of 0 to 5 goals, had an average breakout rate percentage of 9.4, those that scored 6-15 had a 15.1 percentage, those that scored 16-30 had a 13.7 percentage rate, and those that scored 30+ goals had the lowest average breakout rate at 7.8 percent.
+
 ```{r}
 #correlations
 cor_table <- player_year %>% 
@@ -105,6 +137,8 @@ cor_table <- player_year %>%
   cor(use = "complete.obs")
 cor_table
 ```
+
+This observed trend is further demonstrated in the above correlations table. As such, goals scored is negatively correlated with goal change, or the difference between a player's next season goals and their current season goals. However, next season goals correlate positively with the goal change variable which makes sense given the consturuction of goal_change with next_goals.
 
 ```{r}
 #For Positon Assumption
@@ -130,6 +164,10 @@ theme(panel.grid.minor = element_blank())
 
 ```
 
+It is also interesting to note how breakout rate differs by position. Intuitively, this adds up given defensemen are much farther away from the net at any given time than the offense. Intriguingly, left wings have the highest breakout rate at 17.6%, and right wings and centers follow closely behind at 15.9% and 15.4%. I suspect left wings have somewhat of an advantage in terms of shot quality or ability to release given that two thirds of NHL players are lefties and would have an advantage playing on the left side of the ice. Grondin et al. found that for left wings, those that were left handed players had a mean 0.184 goals per game and right handed players had a mean of 0.153 goals per game. This suggests that perhaps given the majority of NHLers are left handed, playing on the left side of the ice is more beneficial locational wise given their handedness. This is all just speculation on my part and something I found interesting outside of the data.
+
+<https://pmc.ncbi.nlm.nih.gov/articles/PMC11339335/#:~:text=Results,Canada%2C%20Europe%2C%20or%20Russia.>
+
 ```{r}
 #create a figure
 ggplot(player_year, aes(x = I_F_xGoals, y = goal_change)) +
@@ -151,6 +189,8 @@ ggplot(player_year, aes(x = xgoals_per_game, y = goal_change)) +
        y = "Next Season Goal Change")+
   theme_minimal()
 ```
+
+Finally, these two graphs illustrate the extent to which high goal scoring and performance is associated with a smaller breakout rate. Given the line of best fit is negative for both current season expected goals and current season expected goals per game, we conclude that as these two measures increase in value, the goal change grows increasingly negative.
 
 ## 3 Prediction: From OLS to LOGIT to LASSO
 
@@ -262,18 +302,18 @@ tibble(Model= c("OLS (no regularization)", "Logit", "LASSO (logit, lambda.min)")
   
 ```
 
-## 4 Fairness: Does the Modell Err Equally?
+## 4 Fairness: Does the Model Predict Equally Across Positions?
 
 ```{r}
 # Use LASSO predictions (lambda.min)
 test |>
   group_by(position) |>
   summarise(N = n(),
-            `True positive rate` = round(mean(pred_class[breakout == 1] == 1), 3),
-            `False positive rate`= round(mean(pred_class[breakout == 0] == 1), 3),
-            `Accuracy`= round(mean(pred_class == breakout), 3),
+            `actual breakout rate` = round(mean(breakout), 3),
+            `mean predicted proabbility`= round(mean(pred_prob), 3),
+            `difference (pred - actual)`= round(mean(pred_prob) - mean(breakout), 3),
             .groups = "drop")|>
-kable(caption = "Logit prediction error rates by position False positive rate = share predicted breakout who did not breakout.")
+kable(caption = "Mean Breakout Predicted probability Vs. Actual Breakout Rate by Position")
 ```
 
 ## 5 Top Predicted Breakouts
