@@ -196,7 +196,7 @@ Finally, these two graphs illustrate the extent to which high goal scoring and p
 
 ### 3.1 Train/Test Split
 
-3 Prediction:
+In an effort to mitigate the risk of overfitting, we create a training and test split of the data. As such, we group 70% of the data into a training set and the other 30% of the data into a test set. This allows us to train our model on known data and still be able to analyse its performance on new data. In this way, our training set consists of 8,670 observations and the test set has 3,716 observations. The training set is used for model fit, while the test set is used specifically to evaluate the model's performance.
 
 ```{r}
 #trail/test split
@@ -212,7 +212,10 @@ cat("Test set:", nrow(test), "observations\n")
 
 ### 3.2 Baseline: OLS (Linear Probability Model)
 
+After splitting the dataset into a train/test split, we perform a basic OLS regression. Given that our outcome variable, breakout rate, is a binary variable, this is identified as a Linear Probability Model. The according outputs reveal that shots on goal is positively associated with being a breakout player. On the other hand, games played and expected goals are negatively associated with being a breakout player. In terms of position, defensemen are 12.5 percentage points less likely to be a breakout player. It is also intriguing to note from our actual and predicted table that 1928 + 392 = 2,320 predicted breakout players out of a test set of 3,716. 2,320 / 3,716 = 0.6243, so our model predicts that about 62.43% of skaters will be breakout players. This is a very large percentage of players especially considering the actual breakout rate from our first summary statistics table was 11.7%. The major downside of this type of model, is that with a binary Y and continuous regressors, our regression can produce values that don't lie between 0 and 1.
+
 ```{r}
+
 #basic ols
 mod1 <- lm(breakout ~ I_F_xGoals + I_F_shotsOnGoal + games_played + position, 
            data = train)
@@ -228,11 +231,16 @@ ols_accuracy <- mean(test$ols_class == test$breakout)
 
 cat(sprintf("OLS — Test RMSE: %.4f | Accuracy: %.3f\n", ols_rmse, ols_accuracy))
 table(predicted = test$ols_class, actual = test$breakout)
+
+
 ```
 
 ### 3.3 LOGIT
 
+We attempt to limit the above overprediction of breakout players and select a better fitting model by implementing a Logit model. This model mitigates the problem of extrapolation with continuous covariates and ensures that the the predicted probability will lie between 0 and 1. Once again, because our Y variable is binary, this is a more fitting result.
+
 ```{r}
+
 #logit model because binary
 logit <- glm(breakout ~ xgoals_per_game + shots_per_game + games_played + position,
              data = train,
@@ -249,7 +257,10 @@ logit_accuracy <- mean(test$pred_class == test$breakout)
 
 cat(sprintf("LOGIT — Test RMSE: %.4f | Accuracy: %.3f\n", logit_rmse, logit_accuracy))
 table(predicted = test$pred_class, actual = test$breakout)
+
 ```
+
+The Logit reveals that expected goals per game is not statistically significant. On the other hand, shots per game is positively associated with a larger predicted probability of being a breakout player next season. The resulting 1611 + 361 = 1972 predicted breakout players out of the 3,716 observation test set indicating, 53.07% players as breakout players and fewer potential false positives than the baseline OLS Model. The accuracy also improves from 47.1% to 54.8%.
 
 ### 3.4 LASSO
 
@@ -292,6 +303,8 @@ cat(sprintf("Nonzero coefficients: %d of %d\n"
 , nrow(nonzero) - 1, ncol(x_train)))
 ```
 
+Finally, we come to our LASSO model, this least absolute shrinkage and selection operation, incorporates a penalty to the Logit, which shrinks some coefficients towards zero and sets others exactly to zero, highlighting selected variables to be used in the model. Our lambda or penalty error is selected by cross validation to find a lambda.min of 0.0007. This is a very small penalty error leading to 6 of 7 variables having nonzero coefficients. The resulting cross-validation curve, illustrates how a range of penalty errors impact model prediction error. Given the fact that the optimal lambda is so small, we can conclude that overfitting is not a problem in our Logit which intuitively makes sense comparing 6 predictors to a training set of 8,670 observations. In fact, by performing the LASSO, our model accuracy decreases from 54.8% in the Logit to 54.4%.
+
 ### 3.5 Comparing the Models
 
 ```{r}
@@ -302,21 +315,41 @@ tibble(Model= c("OLS (no regularization)", "Logit", "LASSO (logit, lambda.min)")
   
 ```
 
+Ultimately, comparing the three models, we determine that the OLS, Logit, and LASSO provide telling insight but come with flaws. The OLS presents a test RMSE of 0.3115 and test accuracy of 47.1%, the Logit presents a test RMSE of 0.3091 and test accuracy of 54.8%, and the LASSO presents a test RMSE of 0.3090 and test accuracy of 54.4%. In comparing OLS and Logit, the Logit model is better as the RMSE decreases by 0.0024 and seems to intuitively make more sense based on our previous interpretations of the predicted and actual tables. However, when we compare Logit and LASSO, the results remain fairly consistent with the test RMSE decreasing by just 0.0001. This lack of substantial change suggests regularization does not do much, and our existing predictors are good predictors, but the breakout rate is just hard to predict with the largest test accuracy being from the Logit model at 54.8%
+
+|     |
+|-----|
+|     |
+
+|     |
+|-----|
+|     |
+|     |
+
+|     |
+|-----|
+|     |
+|     |
+
 ## 4 Fairness: Does the Model Predict Equally Across Positions?
+
+Our models and earlier summary statistics indicated that there is tremendous variation in breakout rate by position. This table seeks to understand the difference between the mean actual breakout predicted probability of players by position and the mean breakout predicted probability of players by position. From the outputs, we know the model slightly overpredicts breakout rate for centers and defenders while just undepredicting the breakout rate for left wings and right wings. Overall, these differences in actual versus mean predicted probability of breakout are quite small and the disparity between model prediction for differing positions is not substantially biased.
 
 ```{r}
 # Use LASSO predictions (lambda.min)
 test |>
   group_by(position) |>
   summarise(N = n(),
-            `actual breakout rate` = round(mean(breakout), 3),
-            `mean predicted proabbility`= round(mean(pred_prob), 3),
-            `difference (pred - actual)`= round(mean(pred_prob) - mean(breakout), 3),
+            `actual breakout rate (%)` = round(mean(breakout*100), 3),
+            `mean predicted proabbility(%)`= round(mean(pred_prob*100), 3),
+            `difference (pred - actual)`= round(mean(pred_prob*100) - mean(breakout*100), 3),
             .groups = "drop")|>
 kable(caption = "Mean Breakout Predicted probability Vs. Actual Breakout Rate by Position")
 ```
 
 ## 5 Top Predicted Breakouts
+
+To place our model in the context of actual player information, we find that our model predicted the following 25 players to have the highest predicted probability of becoming breakout players in the following season. As indicated by the table, many of these players with the highest predicted probability of breakout did boast breakout seasons in the next season of play like Brandon Pirri, Brandeon Hagel, Zach Parise, Evgeni Malkin, and Sidney Crosby. However, many of these players with high predicted probability of breaking out do not end up having breakout seasons the following year like Marian Studenic, Miikka Salomaki, Nick Paul and Evan Rodrigues.
 
 ```{r}
 #get players
@@ -329,4 +362,10 @@ knitr::kable(predicted_breakouts)
 
 ## 6 Limitations
 
+One of the most obvious limitations of this paper is omitted variable bias. One such omitted variable could be player compatibility. Hockey players take extremely short shifts, and practice together for extended amounts of time, so their productivity may differ depending on how they are on a line with. This study fails to acknowledge the important aspect that some players simply work better together than others, and coaching decision and quality to execute good lines proves to be another omitted variable. Applied to this study, player compatibility would impact both the breakout rate, as players will play better if they are working with those they have a connection with, and considering the OVB formula α1 = β1 + β2γ1, the sign of , β2 is likely positive. In addition, player compatibility is correlated with a regressor of interest, like shots per game, given that if you are playing with someone you gel well with, there can be an aspect of telephathy where one player knows where the other will be before they are even there allowing for heightened passing and shooting opportunites, and γ1 to have a positive sign. All of this considered, the net effect of β2γ1 is positive, and then we have overstated the true effect, estimating an effect (α1) larger in magnitude than that of the true effect (β1).
+
+It is also important to note that we do not have a complete understanding of the model MoneyPuck uses to generate an expected goals value. Tanner specifices **that the model** determines this variable via computing the chance that an unblocked shot attempt becomes a goal. For instance, 0.5 expected goals could come from a rebound shot in the slot that has a 50% chance of becoming a goal. and 0.01 expected goals could result from a shot from the blueline while short handed. Ultimately, while compelling, the information stemming from this variable must be interpreted with a grain of salt given the lack of total understanding of its creation.
+
 ## 7 Conclusion
+
+Finally, this paper seeked to explore whether one could predict what players in the NHL will have a breakout season in the following year using statistic performance data from a given season. We conclude that this process is possible, although extremely challenging to do accurately. Given the substantial amount of variables difficult to quantify and potential confounding factors, its important to acknowledge the relevant limitations of the model.
