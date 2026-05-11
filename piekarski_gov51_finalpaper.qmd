@@ -8,6 +8,8 @@ editor: visual
 
 #### By: Sage Piekarski
 
+Predictive Report
+
 Gov 51: Data Analysis and Politics
 
 Professor Cunningham
@@ -20,9 +22,9 @@ Professor Cunningham
 
 The National Hockey League is growing faster than ever before. With an average 15% year over year growth in each individual teams' valuation, the average of team valuations has more than doubled from \$1billion in 2022 to \$2.2 billion in 2024. Certainly there is a spectrum of team valuations within these means, but both ends are experiencing large increases in their valuations. For instance, the Columbus Blue Jackets is the lowest valuated team in all of the NHL, yet there valuation has jumped 30% since 2024, reaching \$1.3 billion. On the flip side, the Toronto Maple Leafs continue to be the highest valuated team in the league, growing 16% since 2024, to a value of \$4.4 billion.
 
-All things considered, as the NHL continues to skyrocket into unchartered territory, the stakes and performances of each one of the 32 franchises becomes increasingly important. While there is a bounty of data provided detailing NHL statistics, like via MoneyPuck, modern day ice hockey statistics fail to provide complete predictive models of what players are most likely to have a standout season in the future.
+All things considered, as the NHL continues to skyrocket into unchartered territory, the stakes and performances of each one of the 32 franchises becomes increasingly important. While there is a bounty of data detailling NHL performance statistics, like MoneyPuck, modern day ice hockey statistics fail to provide complete predictive models of what players are most likely to have a standout season in the future.
 
-To that end, this paper seeks to use the detailled past performance statistics collected in MoneyPuck, to predict which NHL players have the highest probability of having a breakout season. Three questions guide the paper's progression: how well do observable performance statistics predict breakout rate, does shrinkage using LASSO improve prediction compared to a traditional LPM or Logit model, and does the model predict equally across positions?
+To that end, this paper seeks to use past player performance statistics collected in MoneyPuck, to predict which NHL players have the highest probability of having a breakout season. Four questions guide the paper's progression: how well do observable performance statistics predict breakout rate, does shrinkage using LASSO improve prediction compared to a traditional LPM or Logit model, does the model predict fairly across positions, and what players have had the largest predicted probability of having a breakout season in their next year of play.
 
 <https://www.forbes.com/sites/justinteitelbaum/2025/12/11/the-nhls-most-valuable-teams-2025/>
 
@@ -55,25 +57,23 @@ glimpse(skaters_2008_to_2024)
 
 ### 2.2 Data Cleansing and Breakout Idenitifcation
 
-The key variables used in our analysis from MoneyPuck are xgoals_per_game, shots_per_game, games_played, and position. Based on MoneyPuck variables, we create goal_change, goals_per_game, xgoals_per_game, shots_per_game, and breakout. Below you will find an explanation of each of these variables.
+The key variables used in our analysis from MoneyPuck are xgoals_per_game, games_played, and position. Based on MoneyPuck variables, we create goal_change, goals_per_game, xgoals_per_game, shots_per_game, and breakout. Below you will find an explanation of each of these variables.
 
 **xgoals_per_game** - Expected goals per game for each player. MoneyPuck's Expected Goals Model determines this variable, and determines it to be "the chance of an unblocked shot attempt being a goal. For example, a rebound shot in the slot may have a 50% of going in and be worth 0.5 expected goals, while a shot from the blueline while short handed may be worth 0.01 expected goals."
 
-**shots_per_game** - Shots on goal per game.
+**games_played** - Number of games played in a given season.
 
-**games_played** - Number of gamed played in a given season.
-
-**postion** - Identification of a player's position: center, right wing, left wing, defenseman.
+**position** - Identification of a player's position: center, right wing, left wing, defenseman.
 
 **goal_change** - A player's next season goals minus current season goals.
 
-**goals_per_game** - Number of average goals scored per game by a player in a given season.
+**goals_per_game** - Average goals scored per game by a player in a given season.
 
-**xgoals_per_game** - Number of average expected goals scored per game by a player in a given season.
+**xgoals_per_game** - Average expected goals scored per game by a player in a given season.
 
 **shots_per_game** - Number of shots on goal per game by a player in a given season.
 
-**breakout** - binary variable, breakout players (1) are those players that rank in the top 10% of goal change and (0) if otherwise.
+**breakout** - binary variable, breakout players (1) are those players that rank in the top 10% of goal change and (0) if otherwise. In creating this variable, we decide to impose the 10 percent threshold as it is a reasonable requirement to identify those that are playing exceptionally well and have experienced high growth in performance since last season.
 
 ```{r}
 #clean the data
@@ -128,7 +128,7 @@ player_year |>
   kable(caption = "Breakout Rate By Current Season Goal Total")
 ```
 
-We then bucket goals into four groups: 0-5, 6-15, 16-30, and 30+. Organizing data in such a manner allows us to see the direct association between goals scored this season and breakout rate percentage. This is a really important finding that alters later interpretations of out findings. As such, the "Breakout Rate by Current Season Goal Table" illuminates the fact that as goals scored increases beyond 6-15, probability of a breakout season decreases. In this way, those that scored an average of 0 to 5 goals, had an average breakout rate percentage of 9.4, those that scored 6-15 had a 15.1 percentage, those that scored 16-30 had a 13.7 percentage rate, and those that scored 30+ goals had the lowest average breakout rate at 7.8 percent.
+We then bucket goals into four groups: 0-5, 6-15, 16-30, and 30+. Organizing data in such a manner allows us to see the direct association between goals scored this season and breakout rate percentage. This is a really important finding that alters later interpretations of our results. As such, the "Breakout Rate by Current Season Goal Table" illuminates the fact that as goals scored increases beyond 6-15, predicted probability of a breakout season decreases. In this way, those that scored an average of 0 to 5 goals, had an average breakout rate percentage of 9.4, those that scored 6-15 had a 15.1 percentage, those that scored 16-30 had a 13.7 percentage rate, and those that scored 30+ goals had the lowest average breakout rate at 7.8 percent.
 
 ```{r}
 #correlations
@@ -138,35 +138,7 @@ cor_table <- player_year %>%
 cor_table
 ```
 
-This observed trend is further demonstrated in the above correlations table. As such, goals scored is negatively correlated with goal change, or the difference between a player's next season goals and their current season goals. However, next season goals correlate positively with the goal change variable which makes sense given the consturuction of goal_change with next_goals.
-
-```{r}
-#For Positon Assumption
-position_summary <- player_year %>% 
-  group_by(position) %>% 
-  summarise(Rate = mean(breakout), N = n()) %>% 
-  arrange(desc(Rate))
-
-ggplot(position_summary, aes(x = Rate, y = reorder(position, Rate), fill = position == "D")) +
-geom_col(width = 0.6) +
-geom_text(aes(label = percent(Rate, accuracy = 0.1)), hjust = -0.1, size = 3.5) +
-scale_fill_manual(values = c("TRUE" = "#2166AC", "FALSE" = "#B2C8D9"), guide = "none") +
-scale_x_continuous(labels = percent_format(), limits = c(0, 0.65)) +
-labs(
-title = "Breakout Rates Vary Substantially by Position",
-subtitle = "Share with top 10% goal increase next season, unadjusted",
-x = "Breakout rate",
-y = NULL,
-caption = "Source: MoneyPuck"
-) +
-theme_minimal(base_size = 11) +
-theme(panel.grid.minor = element_blank())
-
-```
-
-It is also interesting to note how breakout rate differs by position. Intuitively, this adds up given defensemen are much farther away from the net at any given time than the offense. Intriguingly, left wings have the highest breakout rate at 17.6%, and right wings and centers follow closely behind at 15.9% and 15.4%. I suspect left wings have somewhat of an advantage in terms of shot quality or ability to release given that two thirds of NHL players are lefties and would have an advantage playing on the left side of the ice. Grondin et al. found that for left wings, those that were left handed players had a mean 0.184 goals per game and right handed players had a mean of 0.153 goals per game. This suggests that perhaps given the majority of NHLers are left handed, playing on the left side of the ice is more beneficial locational wise given their handedness. This is all just speculation on my part and something I found interesting outside of the data.
-
-<https://pmc.ncbi.nlm.nih.gov/articles/PMC11339335/#:~:text=Results,Canada%2C%20Europe%2C%20or%20Russia.>
+This observed trend is further demonstrated in the above correlations table. As such, goals scored is negatively correlated with goal change, or the difference between a player's next season goals and their current season goals. My personal hypothesis backing these findings is that I would suppose players that have reached an exceedingly high level of play, and have scored lots of goals, have a harder time substantially increasing their next season's play. It might be easy to increase playing performance when one starts at a low point, but those players that are recognized as being strong, are marked more heavily, and have more of the other team's attention on them, so this negative correlation does seem intuitive. On the other hand, next season goals correlates positively with the goal change variable. This makes sense given the consturuction of goal_change with next_goals being a component within it, so as next_goals increases so too should goal_change.
 
 ```{r}
 #create a figure
@@ -190,7 +162,34 @@ ggplot(player_year, aes(x = xgoals_per_game, y = goal_change)) +
   theme_minimal()
 ```
 
-Finally, these two graphs illustrate the extent to which high goal scoring and performance is associated with a smaller breakout rate. Given the line of best fit is negative for both current season expected goals and current season expected goals per game, we conclude that as these two measures increase in value, the goal change grows increasingly negative.
+In addition, these two graphs illustrate the extent to which high goal scoring and performance is associated with a smaller breakout rate. Given the line of best fit is negative for both current season expected goals and current season expected goals per game, we conclude that as these two measures increase in value, the goal change grows increasingly negative. With a smaller goal change, players will be less likely to be classified as a breakout player and achieve breakout status.
+
+```{r}
+#For Positon Assumption
+position_summary <- player_year %>% 
+  group_by(position) %>% 
+  summarise(Rate = mean(breakout), N = n()) %>% 
+  arrange(desc(Rate))
+
+ggplot(position_summary, aes(x = Rate, y = reorder(position, Rate), fill = position == "D")) +
+geom_col(width = 0.6) +
+geom_text(aes(label = percent(Rate, accuracy = 0.1)), hjust = -0.1, size = 3.5) +
+scale_fill_manual(values = c("TRUE" = "#2166AC", "FALSE" = "#B2C8D9"), guide = "none") +
+scale_x_continuous(labels = percent_format(), limits = c(0, 0.65)) +
+labs(
+title = "Breakout Rates Vary Substantially by Position",
+subtitle = "Share with top 10% goal increase next season, unadjusted",
+x = "Breakout rate",
+y = NULL,
+caption = "Source: MoneyPuck"
+) +
+theme_minimal(base_size = 11) +
+theme(panel.grid.minor = element_blank())
+```
+
+It is also interesting to note how breakout rate differs by position. Intuitively, this adds up given defensemen are much farther away from the net at any given time than the offense with a 3.3% breakout rate. Intriguingly, left wings have the highest breakout rate at 17.6%, and right wings and centers follow closely behind at 15.9% and 15.4%. I suspect left wings have somewhat of an advantage in terms of shot quality or ability to release given that two thirds of NHL players are lefties and would have an advantage playing on the left side of the ice. Grondin et al. found that for left wings, those that were left handed players had a mean 0.184 goals per game and right handed players had a mean of 0.153 goals per game. This suggests that perhaps given the majority of NHLers are left handed, playing on the left side of the ice is more beneficial locational wise given their handedness. This is all just speculation on my part and something I found interesting outside of the data.
+
+<https://pmc.ncbi.nlm.nih.gov/articles/PMC11339335/#:~:text=Results,Canada%2C%20Europe%2C%20or%20Russia.>
 
 ## 3 Prediction: From OLS to LOGIT to LASSO
 
@@ -212,7 +211,7 @@ cat("Test set:", nrow(test), "observations\n")
 
 ### 3.2 Baseline: OLS (Linear Probability Model)
 
-After splitting the dataset into a train/test split, we perform a basic OLS regression. Given that our outcome variable, breakout rate, is a binary variable, this is identified as a Linear Probability Model. The according outputs reveal that shots on goal is positively associated with being a breakout player. On the other hand, games played and expected goals are negatively associated with being a breakout player. In terms of position, defensemen are 12.5 percentage points less likely to be a breakout player. It is also intriguing to note from our actual and predicted table that 1928 + 392 = 2,320 predicted breakout players out of a test set of 3,716. 2,320 / 3,716 = 0.6243, so our model predicts that about 62.43% of skaters will be breakout players. This is a very large percentage of players especially considering the actual breakout rate from our first summary statistics table was 11.7%. The major downside of this type of model, is that with a binary Y and continuous regressors, our regression can produce values that don't lie between 0 and 1.
+After splitting the dataset into a train/test split, we perform a basic OLS regression. Given that our outcome variable, breakout, is a binary variable, this is identified as a Linear Probability Model. The according outputs reveal that shots on goal is positively associated with being a breakout player. On the other hand, games played and expected goals are negatively associated with being a breakout player. In terms of position, defensemen are 12.5 percentage points less likely to be a breakout player. It is also intriguing to note from our actual and predicted table that 1928 + 392 = 2,320 predicted breakout players out of a test set of 3,716. 2,320 / 3,716 = 0.6243, so our model predicts that about 62.43% of skaters will be breakout players. This is a very large percentage of players especially considering the actual breakout rate from our first summary statistics table was 11.7%. The major downside of this type of model, is that with a binary Y and continuous regressors, our regression can produce values that don't lie between 0 and 1.
 
 ```{r}
 
@@ -260,7 +259,7 @@ table(predicted = test$pred_class, actual = test$breakout)
 
 ```
 
-The Logit reveals that expected goals per game is not statistically significant. On the other hand, shots per game is positively associated with a larger predicted probability of being a breakout player next season. The resulting 1611 + 361 = 1972 predicted breakout players out of the 3,716 observation test set indicating, 53.07% players as breakout players and fewer potential false positives than the baseline OLS Model. The accuracy also improves from 47.1% to 54.8%.
+The Logit reveals that expected goals per game is not statistically significant. On the other hand, shots per game is positively associated with a larger predicted probability of being a breakout player next season. The resulting 1611 + 361 = 1972 predicted breakout players out of the 3,716 observation test set indicates that the model determines 53.07% of players to expect breakout seasons. This 53.07% value is substantially smaller than the OLS's 62.43%, so the Logit model has fewer potential false positives in breakout than the baseline OLS Model. The accuracy of the Logit model also improves at 54.8% while the OLS's accuracy was 47.1%.
 
 ### 3.4 LASSO
 
@@ -303,7 +302,7 @@ cat(sprintf("Nonzero coefficients: %d of %d\n"
 , nrow(nonzero) - 1, ncol(x_train)))
 ```
 
-Finally, we come to our LASSO model, this least absolute shrinkage and selection operation, incorporates a penalty to the Logit, which shrinks some coefficients towards zero and sets others exactly to zero, highlighting selected variables to be used in the model. Our lambda or penalty error is selected by cross validation to find a lambda.min of 0.0007. This is a very small penalty error leading to 6 of 7 variables having nonzero coefficients. The resulting cross-validation curve, illustrates how a range of penalty errors impact model prediction error. Given the fact that the optimal lambda is so small, we can conclude that overfitting is not a problem in our Logit which intuitively makes sense comparing 6 predictors to a training set of 8,670 observations. In fact, by performing the LASSO, our model accuracy decreases from 54.8% in the Logit to 54.4%.
+Finally, we come to our LASSO model, this least absolute shrinkage and selection operation, incorporates a penalty term, which shrinks some coefficients towards zero and sets others exactly to zero, highlighting selected variables to be used in the model. Our lambda or penalty error is selected by cross validation to find a lambda.min of 0.0007. This is a very small penalty error leading to 6 of 7 variables having nonzero coefficients. The resulting cross-validation curve, illustrates how a range of penalty errors impact model prediction error. Given the fact that the optimal lambda is so small, we can conclude that overfitting is not a problem in our model which should intuitively makes sense comparing 6 predictors to a training set of 8,670 observations. By performing the LASSO, our model accuracy increases from the baseline OLS which was 47.1% to 54.4% in the LASSO.
 
 ### 3.5 Comparing the Models
 
@@ -315,25 +314,11 @@ tibble(Model= c("OLS (no regularization)", "Logit", "LASSO (logit, lambda.min)")
   
 ```
 
-Ultimately, comparing the three models, we determine that the OLS, Logit, and LASSO provide telling insight but come with flaws. The OLS presents a test RMSE of 0.3115 and test accuracy of 47.1%, the Logit presents a test RMSE of 0.3091 and test accuracy of 54.8%, and the LASSO presents a test RMSE of 0.3090 and test accuracy of 54.4%. In comparing OLS and Logit, the Logit model is better as the RMSE decreases by 0.0024 and seems to intuitively make more sense based on our previous interpretations of the predicted and actual tables. However, when we compare Logit and LASSO, the results remain fairly consistent with the test RMSE decreasing by just 0.0001. This lack of substantial change suggests regularization does not do much, and our existing predictors are good predictors, but the breakout rate is just hard to predict with the largest test accuracy being from the Logit model at 54.8%
-
-|     |
-|-----|
-|     |
-
-|     |
-|-----|
-|     |
-|     |
-
-|     |
-|-----|
-|     |
-|     |
+Ultimately, comparing the three models, we determine that the OLS, Logit, and LASSO provide telling insight but come with flaws. The OLS presents a test RMSE of 0.3115 and test accuracy of 47.1%, the Logit presents a test RMSE of 0.3091 and test accuracy of 54.8%, and the LASSO presents a test RMSE of 0.3090 and test accuracy of 54.4%. In comparing OLS and Logit, the Logit model is better as the RMSE decreases by 0.0024 and seems to intuitively make more sense based on our previous interpretations of the predicted and actual tables. However, when we compare Logit and LASSO, the results remain fairly consistent with the test RMSE decreasing by just 0.0001. This lack of substantial change suggests regularization does not do much, and our existing predictors are telling, but the breakout rate is just hard to predict with the largest test accuracy being from the Logit model at 54.8%
 
 ## 4 Fairness: Does the Model Predict Equally Across Positions?
 
-Our models and earlier summary statistics indicated that there is tremendous variation in breakout rate by position. This table seeks to understand the difference between the mean actual breakout predicted probability of players by position and the mean breakout predicted probability of players by position. From the outputs, we know the model slightly overpredicts breakout rate for centers and defenders while just undepredicting the breakout rate for left wings and right wings. Overall, these differences in actual versus mean predicted probability of breakout are quite small and the disparity between model prediction for differing positions is not substantially biased.
+Our models and earlier summary statistics indicated that there is tremendous variation in breakout rate by position. This table seeks to understand the difference between the mean actual breakout rate of players by position and the mean predicted probability of breakout players by position. From the outputs, we know the model slightly overpredicts breakout rate for centers and defenders while just underpredicting the breakout rate for left wings and right wings. Overall, these differences in actual versus mean predicted probability of breakout are quite small and the disparity between model prediction for differing positions is not substantially biased.
 
 ```{r}
 # Use LASSO predictions (lambda.min)
@@ -362,10 +347,16 @@ knitr::kable(predicted_breakouts)
 
 ## 6 Limitations
 
-One of the most obvious limitations of this paper is omitted variable bias. One such omitted variable could be player compatibility. Hockey players take extremely short shifts, and practice together for extended amounts of time, so their productivity may differ depending on how they are on a line with. This study fails to acknowledge the important aspect that some players simply work better together than others, and coaching decision and quality to execute good lines proves to be another omitted variable. Applied to this study, player compatibility would impact both the breakout rate, as players will play better if they are working with those they have a connection with, and considering the OVB formula α1 = β1 + β2γ1, the sign of , β2 is likely positive. In addition, player compatibility is correlated with a regressor of interest, like shots per game, given that if you are playing with someone you gel well with, there can be an aspect of telephathy where one player knows where the other will be before they are even there allowing for heightened passing and shooting opportunites, and γ1 to have a positive sign. All of this considered, the net effect of β2γ1 is positive, and then we have overstated the true effect, estimating an effect (α1) larger in magnitude than that of the true effect (β1).
+One of the most obvious limitations of this paper is omitted variable bias. One such omitted variable could be player compatibility. Hockey players take extremely short shifts, and practice together for extended amounts of time, so their productivity may differ depending on who they are on a line with. This study fails to acknowledge the important aspect that some players simply work better together than others, and coaching decision and quality to execute good lines proves to be another omitted variable on top of that.
 
-It is also important to note that we do not have a complete understanding of the model MoneyPuck uses to generate an expected goals value. Tanner specifices **that the model** determines this variable via computing the chance that an unblocked shot attempt becomes a goal. For instance, 0.5 expected goals could come from a rebound shot in the slot that has a 50% chance of becoming a goal. and 0.01 expected goals could result from a shot from the blueline while short handed. Ultimately, while compelling, the information stemming from this variable must be interpreted with a grain of salt given the lack of total understanding of its creation.
+Applied to this study, player compatibility would impact the breakout dependent variable, as players will play better if they are working with those they have a connection with and this means they could have an increased goal_change difference. Considering the OVB formula α1 = β1 + β2γ1, the sign of β2 is likely positive. In addition, player compatibility is correlated with a regressor of interest, like shots per game, given that if you are playing with someone you gel well with, there can be an aspect of telephathy where one player knows where the other will be before they are even there. This relationship allows for heightened passing and shooting opportunites, and γ1 would thus have a positive sign. All of this considered, the net effect of β2γ1 is positive. We have overstated the true effect, estimating an effect (α1) larger in magnitude than that of the true effect (β1).
+
+It is also important to note that we do not have a complete understanding of the model MoneyPuck uses to generate an expected goals value. Tanner specifices **that the model** determines this variable via computing the chance that an unblocked shot attempt becomes a goal. For instance, 0.5 expected goals could come from a rebound shot in the slot that has a 50% chance of becoming a goal, and 0.01 expected goals could result from a shot from the blueline while short handed. Ultimately, while compelling, the information stemming from this variable must be interpreted with a grain of salt given the lack of total understanding of its creation without the specific coding creation made public.
+
+The results of this paper do not suggest causation. The purpose is to provide a predictive model of future breakout players.
 
 ## 7 Conclusion
 
-Finally, this paper seeked to explore whether one could predict what players in the NHL will have a breakout season in the following year using statistic performance data from a given season. We conclude that this process is possible, although extremely challenging to do accurately. Given the substantial amount of variables difficult to quantify and potential confounding factors, its important to acknowledge the relevant limitations of the model.
+In the end, this paper seeked to explore whether one could predict which players in the NHL will have a breakout season in the following year using statistical performance data from a given season. We conclude that this process is possible, although extremely challenging to do accurately. Given the substantial amount of variables difficult to quantify and potential confounding factors, its important to acknowledge the relevant limitations of the created models, when interpreting our findings.
+
+On the larger scale, current NHL statistics provide many predictive models of who will win games and previous sports statistics on player performance. However, there is a lack of understanding of whether we can predict which players will excel in next season's performance in relation to their performance this past season. Predictive player modelling, as is done in this paper, will provide extremely telling insight into which player's are currently undervalued in the league. As the NHL continues to grow in popularity, revenue, and valuation, the stakes continue to rise, making the impact of predictive player statistics increasingly important.

@@ -104,16 +104,22 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h4 class="anchored" data-anchor-id="by-sage-piekarski">By: Sage Piekarski</h4>
 <p>Gov 51: Data Analysis and Politics</p>
 <p>Professor Cunningham</p>
-<p>2026 - 05 - 10</p>
+<p>2026 - 05 - 11</p>
+<p><a href="https://github.com/sagepiekarski-ai/Gov51---Final-Paper.git" class="uri">https://github.com/sagepiekarski-ai/Gov51---Final-Paper.git</a></p>
 </section>
 <section id="introduction" class="level2">
 <h2 class="anchored" data-anchor-id="introduction">1 Introduction</h2>
-<p>When you click the <strong>Render</strong> button a document will be generated that includes both content and the output of embedded code. You can embed code like this:</p>
+<p>The National Hockey League is growing faster than ever before. With an average 15% year over year growth in each individual teams’ valuation, the average of team valuations has more than doubled from $1billion in 2022 to $2.2 billion in 2024. Certainly there is a spectrum of team valuations within these means, but both ends are experiencing large increases in their valuations. For instance, the Columbus Blue Jackets is the lowest valuated team in all of the NHL, yet there valuation has jumped 30% since 2024, reaching $1.3 billion. On the flip side, the Toronto Maple Leafs continue to be the highest valuated team in the league, growing 16% since 2024, to a value of $4.4 billion.</p>
+<p>All things considered, as the NHL continues to skyrocket into unchartered territory, the stakes and performances of each one of the 32 franchises becomes increasingly important. While there is a bounty of data provided detailing NHL statistics, like via MoneyPuck, modern day ice hockey statistics fail to provide complete predictive models of what players are most likely to have a standout season in the future.</p>
+<p>To that end, this paper seeks to use the detailled past performance statistics collected in MoneyPuck, to predict which NHL players have the highest probability of having a breakout season. Three questions guide the paper’s progression: how well do observable performance statistics predict breakout rate, does shrinkage using LASSO improve prediction compared to a traditional LPM or Logit model, and does the model predict equally across positions?</p>
+<p><a href="https://www.forbes.com/sites/justinteitelbaum/2025/12/11/the-nhls-most-valuable-teams-2025/" class="uri">https://www.forbes.com/sites/justinteitelbaum/2025/12/11/the-nhls-most-valuable-teams-2025/</a></p>
 </section>
 <section id="data-and-measurement" class="level2">
 <h2 class="anchored" data-anchor-id="data-and-measurement">2 Data and Measurement</h2>
 <section id="the-moneypuck-dataset" class="level3">
 <h3 class="anchored" data-anchor-id="the-moneypuck-dataset">2.1 The MONEYPUCK Dataset</h3>
+<p>The data used in this project comes from the MoneyPuck dataset. MoneyPuck data and its models were compiled and put together by Peter Tanner. The data used in this project consists of season-level data from the 2008/2009 season to the 2024/2025 season. We evaluate all players who played greater than zero games, and who were identified as skaters.</p>
+<p>The dataset contains 76,655 observations across 154 variables.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">#clear the workspace and clear console</span></span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">rm</span>(<span class="at">list=</span><span class="fu">ls</span>())</span>
@@ -340,7 +346,16 @@ $ fenwickAgainstAfterShifts                               &lt;dbl&gt; 0, 0, 8, 0
 </section>
 <section id="data-cleansing-and-breakout-idenitifcation" class="level3">
 <h3 class="anchored" data-anchor-id="data-cleansing-and-breakout-idenitifcation">2.2 Data Cleansing and Breakout Idenitifcation</h3>
-<p>You can add options to executable code like this</p>
+<p>The key variables used in our analysis from MoneyPuck are xgoals_per_game, shots_per_game, games_played, and position. Based on MoneyPuck variables, we create goal_change, goals_per_game, xgoals_per_game, shots_per_game, and breakout. Below you will find an explanation of each of these variables.</p>
+<p><strong>xgoals_per_game</strong> - Expected goals per game for each player. MoneyPuck’s Expected Goals Model determines this variable, and determines it to be “the chance of an unblocked shot attempt being a goal. For example, a rebound shot in the slot may have a 50% of going in and be worth 0.5 expected goals, while a shot from the blueline while short handed may be worth 0.01 expected goals.”</p>
+<p><strong>shots_per_game</strong> - Shots on goal per game.</p>
+<p><strong>games_played</strong> - Number of gamed played in a given season.</p>
+<p><strong>postion</strong> - Identification of a player’s position: center, right wing, left wing, defenseman.</p>
+<p><strong>goal_change</strong> - A player’s next season goals minus current season goals.</p>
+<p><strong>goals_per_game</strong> - Number of average goals scored per game by a player in a given season.</p>
+<p><strong>xgoals_per_game</strong> - Number of average expected goals scored per game by a player in a given season.</p>
+<p><strong>shots_per_game</strong> - Number of shots on goal per game by a player in a given season.</p>
+<p><strong>breakout</strong> - binary variable, breakout players (1) are those players that rank in the top 10% of goal change and (0) if otherwise.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="co">#clean the data</span></span>
 <span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>player_year <span class="ot">&lt;-</span> skaters_2008_to_2024 <span class="sc">%&gt;%</span> </span>
@@ -371,7 +386,6 @@ $ fenwickAgainstAfterShifts                               &lt;dbl&gt; 0, 0, 8, 0
   7 </code></pre>
 </div>
 </div>
-<p>The <code>echo: false</code> option disables the printing of code (only output is displayed).</p>
 </section>
 <section id="descriptive-statistics" class="level3">
 <h3 class="anchored" data-anchor-id="descriptive-statistics">2.3 Descriptive Statistics</h3>
@@ -429,6 +443,7 @@ $ fenwickAgainstAfterShifts                               &lt;dbl&gt; 0, 0, 8, 0
 </table>
 </div>
 </div>
+<p>Once cleansing the data, the dataset follows 12,386 player-seasons. For instance, one player does not equate to one variable, but rather has one variable for each of the seasons they competed in. Based on this data and the summary statistics table above, the mean breakout rate is 11.7% indicating that for every 10 player seasons, slightly more than one is classified as a breakout season. The average goals scored per season is 8.4, the average expected goals per season is slightly less at 8.3. Across each player-season, there was an average of 89.2 shots on goal and each of these players played an average of 51.3 games. The average share of defensemen across player-seasons is 34.5%.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="co">#Breakout Rate By Current Goal Total</span></span>
 <span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>player_year <span class="sc">|&gt;</span> </span>
@@ -472,6 +487,7 @@ $ fenwickAgainstAfterShifts                               &lt;dbl&gt; 0, 0, 8, 0
 </table>
 </div>
 </div>
+<p>We then bucket goals into four groups: 0-5, 6-15, 16-30, and 30+. Organizing data in such a manner allows us to see the direct association between goals scored this season and breakout rate percentage. This is a really important finding that alters later interpretations of out findings. As such, the “Breakout Rate by Current Season Goal Table” illuminates the fact that as goals scored increases beyond 6-15, probability of a breakout season decreases. In this way, those that scored an average of 0 to 5 goals, had an average breakout rate percentage of 9.4, those that scored 6-15 had a 15.1 percentage, those that scored 16-30 had a 13.7 percentage rate, and those that scored 30+ goals had the lowest average breakout rate at 7.8 percent.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="co">#correlations</span></span>
 <span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>cor_table <span class="ot">&lt;-</span> player_year <span class="sc">%&gt;%</span> </span>
@@ -495,6 +511,7 @@ I_F_shotsOnGoal    0.7861908
 games_played       1.0000000</code></pre>
 </div>
 </div>
+<p>This observed trend is further demonstrated in the above correlations table. As such, goals scored is negatively correlated with goal change, or the difference between a player’s next season goals and their current season goals. However, next season goals correlate positively with the goal change variable which makes sense given the consturuction of goal_change with next_goals.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="co">#For Positon Assumption</span></span>
 <span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>position_summary <span class="ot">&lt;-</span> player_year <span class="sc">%&gt;%</span> </span>
@@ -524,6 +541,8 @@ games_played       1.0000000</code></pre>
 </div>
 </div>
 </div>
+<p>It is also interesting to note how breakout rate differs by position. Intuitively, this adds up given defensemen are much farther away from the net at any given time than the offense. Intriguingly, left wings have the highest breakout rate at 17.6%, and right wings and centers follow closely behind at 15.9% and 15.4%. I suspect left wings have somewhat of an advantage in terms of shot quality or ability to release given that two thirds of NHL players are lefties and would have an advantage playing on the left side of the ice. Grondin et al.&nbsp;found that for left wings, those that were left handed players had a mean 0.184 goals per game and right handed players had a mean of 0.153 goals per game. This suggests that perhaps given the majority of NHLers are left handed, playing on the left side of the ice is more beneficial locational wise given their handedness. This is all just speculation on my part and something I found interesting outside of the data.</p>
+<p><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC11339335/#:~:text=Results,Canada%2C%20Europe%2C%20or%20Russia." class="uri">https://pmc.ncbi.nlm.nih.gov/articles/PMC11339335/#:~:text=Results,Canada%2C%20Europe%2C%20or%20Russia.</a></p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="co">#create a figure</span></span>
 <span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(player_year, <span class="fu">aes</span>(<span class="at">x =</span> I_F_xGoals, <span class="at">y =</span> goal_change)) <span class="sc">+</span></span>
@@ -564,13 +583,14 @@ games_played       1.0000000</code></pre>
 </div>
 </div>
 </div>
+<p>Finally, these two graphs illustrate the extent to which high goal scoring and performance is associated with a smaller breakout rate. Given the line of best fit is negative for both current season expected goals and current season expected goals per game, we conclude that as these two measures increase in value, the goal change grows increasingly negative.</p>
 </section>
 </section>
 <section id="prediction-from-ols-to-logit-to-lasso" class="level2">
 <h2 class="anchored" data-anchor-id="prediction-from-ols-to-logit-to-lasso">3 Prediction: From OLS to LOGIT to LASSO</h2>
 <section id="traintest-split" class="level3">
 <h3 class="anchored" data-anchor-id="traintest-split">3.1 Train/Test Split</h3>
-<p>3 Prediction:</p>
+<p>In an effort to mitigate the risk of overfitting, we create a training and test split of the data. As such, we group 70% of the data into a training set and the other 30% of the data into a test set. This allows us to train our model on known data and still be able to analyse its performance on new data. In this way, our training set consists of 8,670 observations and the test set has 3,716 observations. The training set is used for model fit, while the test set is used specifically to evaluate the model’s performance.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="co">#trail/test split</span></span>
 <span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">123</span>)</span>
@@ -589,6 +609,7 @@ games_played       1.0000000</code></pre>
 </section>
 <section id="baseline-ols-linear-probability-model" class="level3">
 <h3 class="anchored" data-anchor-id="baseline-ols-linear-probability-model">3.2 Baseline: OLS (Linear Probability Model)</h3>
+<p>After splitting the dataset into a train/test split, we perform a basic OLS regression. Given that our outcome variable, breakout rate, is a binary variable, this is identified as a Linear Probability Model. The according outputs reveal that shots on goal is positively associated with being a breakout player. On the other hand, games played and expected goals are negatively associated with being a breakout player. In terms of position, defensemen are 12.5 percentage points less likely to be a breakout player. It is also intriguing to note from our actual and predicted table that 1928 + 392 = 2,320 predicted breakout players out of a test set of 3,716. 2,320 / 3,716 = 0.6243, so our model predicts that about 62.43% of skaters will be breakout players. This is a very large percentage of players especially considering the actual breakout rate from our first summary statistics table was 11.7%. The major downside of this type of model, is that with a binary Y and continuous regressors, our regression can produce values that don’t lie between 0 and 1.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb32"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="co">#basic ols</span></span>
 <span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a>mod1 <span class="ot">&lt;-</span> <span class="fu">lm</span>(breakout <span class="sc">~</span> I_F_xGoals <span class="sc">+</span> I_F_shotsOnGoal <span class="sc">+</span> games_played <span class="sc">+</span> position, </span>
@@ -643,6 +664,7 @@ predicted    0    1
 </section>
 <section id="logit" class="level3">
 <h3 class="anchored" data-anchor-id="logit">3.3 LOGIT</h3>
+<p>We attempt to limit the above overprediction of breakout players and select a better fitting model by implementing a Logit model. This model mitigates the problem of extrapolation with continuous covariates and ensures that the the predicted probability will lie between 0 and 1. Once again, because our Y variable is binary, this is a more fitting result.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb38"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a><span class="co">#logit model because binary</span></span>
 <span id="cb38-2"><a href="#cb38-2" aria-hidden="true" tabindex="-1"></a>logit <span class="ot">&lt;-</span> <span class="fu">glm</span>(breakout <span class="sc">~</span> xgoals_per_game <span class="sc">+</span> shots_per_game <span class="sc">+</span> games_played <span class="sc">+</span> position,</span>
@@ -695,6 +717,7 @@ predicted    0    1
         1 1611  361</code></pre>
 </div>
 </div>
+<p>The Logit reveals that expected goals per game is not statistically significant. On the other hand, shots per game is positively associated with a larger predicted probability of being a breakout player next season. The resulting 1611 + 361 = 1972 predicted breakout players out of the 3,716 observation test set indicating, 53.07% players as breakout players and fewer potential false positives than the baseline OLS Model. The accuracy also improves from 47.1% to 54.8%.</p>
 </section>
 <section id="lasso" class="level3">
 <h3 class="anchored" data-anchor-id="lasso">3.4 LASSO</h3>
@@ -763,6 +786,7 @@ predicted    0    1
 <pre><code>Nonzero coefficients: 6 of 7</code></pre>
 </div>
 </div>
+<p>Finally, we come to our LASSO model, this least absolute shrinkage and selection operation, incorporates a penalty to the Logit, which shrinks some coefficients towards zero and sets others exactly to zero, highlighting selected variables to be used in the model. Our lambda or penalty error is selected by cross validation to find a lambda.min of 0.0007. This is a very small penalty error leading to 6 of 7 variables having nonzero coefficients. The resulting cross-validation curve, illustrates how a range of penalty errors impact model prediction error. Given the fact that the optimal lambda is so small, we can conclude that overfitting is not a problem in our Logit which intuitively makes sense comparing 6 predictors to a training set of 8,670 observations. In fact, by performing the LASSO, our model accuracy decreases from 54.8% in the Logit to 54.4%.</p>
 </section>
 <section id="comparing-the-models" class="level3">
 <h3 class="anchored" data-anchor-id="comparing-the-models">3.5 Comparing the Models</h3>
@@ -801,36 +825,65 @@ predicted    0    1
 </table>
 </div>
 </div>
+<p>Ultimately, comparing the three models, we determine that the OLS, Logit, and LASSO provide telling insight but come with flaws. The OLS presents a test RMSE of 0.3115 and test accuracy of 47.1%, the Logit presents a test RMSE of 0.3091 and test accuracy of 54.8%, and the LASSO presents a test RMSE of 0.3090 and test accuracy of 54.4%. In comparing OLS and Logit, the Logit model is better as the RMSE decreases by 0.0024 and seems to intuitively make more sense based on our previous interpretations of the predicted and actual tables. However, when we compare Logit and LASSO, the results remain fairly consistent with the test RMSE decreasing by just 0.0001. This lack of substantial change suggests regularization does not do much, and our existing predictors are good predictors, but the breakout rate is just hard to predict with the largest test accuracy being from the Logit model at 54.8%</p>
+<table class="caption-top table">
+<tbody>
+<tr class="odd">
+<td></td>
+</tr>
+</tbody>
+</table>
+<table class="caption-top table">
+<tbody>
+<tr class="odd">
+<td></td>
+</tr>
+<tr class="even">
+<td></td>
+</tr>
+</tbody>
+</table>
+<table class="caption-top table">
+<tbody>
+<tr class="odd">
+<td></td>
+</tr>
+<tr class="even">
+<td></td>
+</tr>
+</tbody>
+</table>
 </section>
 </section>
-<section id="fairness-does-the-modell-err-equally" class="level2">
-<h2 class="anchored" data-anchor-id="fairness-does-the-modell-err-equally">4 Fairness: Does the Modell Err Equally?</h2>
+<section id="fairness-does-the-model-predict-equally-across-positions" class="level2">
+<h2 class="anchored" data-anchor-id="fairness-does-the-model-predict-equally-across-positions">4 Fairness: Does the Model Predict Equally Across Positions?</h2>
+<p>Our models and earlier summary statistics indicated that there is tremendous variation in breakout rate by position. This table seeks to understand the difference between the mean actual breakout predicted probability of players by position and the mean breakout predicted probability of players by position. From the outputs, we know the model slightly overpredicts breakout rate for centers and defenders while just undepredicting the breakout rate for left wings and right wings. Overall, these differences in actual versus mean predicted probability of breakout are quite small and the disparity between model prediction for differing positions is not substantially biased.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb54"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb54-1"><a href="#cb54-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Use LASSO predictions (lambda.min)</span></span>
 <span id="cb54-2"><a href="#cb54-2" aria-hidden="true" tabindex="-1"></a>test <span class="sc">|&gt;</span></span>
 <span id="cb54-3"><a href="#cb54-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(position) <span class="sc">|&gt;</span></span>
 <span id="cb54-4"><a href="#cb54-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">N =</span> <span class="fu">n</span>(),</span>
-<span id="cb54-5"><a href="#cb54-5" aria-hidden="true" tabindex="-1"></a>            <span class="st">`</span><span class="at">actual breakout rate</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">round</span>(<span class="fu">mean</span>(breakout), <span class="dv">3</span>),</span>
-<span id="cb54-6"><a href="#cb54-6" aria-hidden="true" tabindex="-1"></a>            <span class="st">`</span><span class="at">mean predicted proabbility</span><span class="st">`</span><span class="ot">=</span> <span class="fu">round</span>(<span class="fu">mean</span>(pred_prob), <span class="dv">3</span>),</span>
-<span id="cb54-7"><a href="#cb54-7" aria-hidden="true" tabindex="-1"></a>            <span class="st">`</span><span class="at">difference (pred - actual)</span><span class="st">`</span><span class="ot">=</span> <span class="fu">round</span>(<span class="fu">mean</span>(pred_prob) <span class="sc">-</span> <span class="fu">mean</span>(breakout), <span class="dv">3</span>),</span>
+<span id="cb54-5"><a href="#cb54-5" aria-hidden="true" tabindex="-1"></a>            <span class="st">`</span><span class="at">actual breakout rate (%)</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">round</span>(<span class="fu">mean</span>(breakout<span class="sc">*</span><span class="dv">100</span>), <span class="dv">3</span>),</span>
+<span id="cb54-6"><a href="#cb54-6" aria-hidden="true" tabindex="-1"></a>            <span class="st">`</span><span class="at">mean predicted proabbility(%)</span><span class="st">`</span><span class="ot">=</span> <span class="fu">round</span>(<span class="fu">mean</span>(pred_prob<span class="sc">*</span><span class="dv">100</span>), <span class="dv">3</span>),</span>
+<span id="cb54-7"><a href="#cb54-7" aria-hidden="true" tabindex="-1"></a>            <span class="st">`</span><span class="at">difference (pred - actual)</span><span class="st">`</span><span class="ot">=</span> <span class="fu">round</span>(<span class="fu">mean</span>(pred_prob<span class="sc">*</span><span class="dv">100</span>) <span class="sc">-</span> <span class="fu">mean</span>(breakout<span class="sc">*</span><span class="dv">100</span>), <span class="dv">3</span>),</span>
 <span id="cb54-8"><a href="#cb54-8" aria-hidden="true" tabindex="-1"></a>            <span class="at">.groups =</span> <span class="st">"drop"</span>)<span class="sc">|&gt;</span></span>
 <span id="cb54-9"><a href="#cb54-9" aria-hidden="true" tabindex="-1"></a><span class="fu">kable</span>(<span class="at">caption =</span> <span class="st">"Mean Breakout Predicted probability Vs. Actual Breakout Rate by Position"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <table class="caption-top table table-sm table-striped small">
 <caption>Mean Breakout Predicted probability Vs. Actual Breakout Rate by Position</caption>
 <colgroup>
-<col style="width: 10%">
+<col style="width: 9%">
 <col style="width: 5%">
-<col style="width: 23%">
-<col style="width: 30%">
-<col style="width: 30%">
+<col style="width: 26%">
+<col style="width: 31%">
+<col style="width: 28%">
 </colgroup>
 <thead>
 <tr class="header">
 <th style="text-align: left;">position</th>
 <th style="text-align: right;">N</th>
-<th style="text-align: right;">actual breakout rate</th>
-<th style="text-align: right;">mean predicted proabbility</th>
+<th style="text-align: right;">actual breakout rate (%)</th>
+<th style="text-align: right;">mean predicted proabbility(%)</th>
 <th style="text-align: right;">difference (pred - actual)</th>
 </tr>
 </thead>
@@ -838,30 +891,30 @@ predicted    0    1
 <tr class="odd">
 <td style="text-align: left;">C</td>
 <td style="text-align: right;">1092</td>
-<td style="text-align: right;">0.151</td>
-<td style="text-align: right;">0.156</td>
-<td style="text-align: right;">0.005</td>
+<td style="text-align: right;">15.110</td>
+<td style="text-align: right;">15.595</td>
+<td style="text-align: right;">0.486</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">D</td>
 <td style="text-align: right;">1308</td>
-<td style="text-align: right;">0.026</td>
-<td style="text-align: right;">0.036</td>
-<td style="text-align: right;">0.010</td>
+<td style="text-align: right;">2.599</td>
+<td style="text-align: right;">3.588</td>
+<td style="text-align: right;">0.989</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">L</td>
 <td style="text-align: right;">685</td>
-<td style="text-align: right;">0.180</td>
-<td style="text-align: right;">0.172</td>
-<td style="text-align: right;">-0.008</td>
+<td style="text-align: right;">17.956</td>
+<td style="text-align: right;">17.190</td>
+<td style="text-align: right;">-0.766</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">R</td>
 <td style="text-align: right;">631</td>
-<td style="text-align: right;">0.173</td>
-<td style="text-align: right;">0.155</td>
-<td style="text-align: right;">-0.017</td>
+<td style="text-align: right;">17.274</td>
+<td style="text-align: right;">15.534</td>
+<td style="text-align: right;">-1.740</td>
 </tr>
 </tbody>
 </table>
@@ -870,6 +923,7 @@ predicted    0    1
 </section>
 <section id="top-predicted-breakouts" class="level2">
 <h2 class="anchored" data-anchor-id="top-predicted-breakouts">5 Top Predicted Breakouts</h2>
+<p>To place our model in the context of actual player information, we find that our model predicted the following 25 players to have the highest predicted probability of becoming breakout players in the following season. As indicated by the table, many of these players with the highest predicted probability of breakout did boast breakout seasons in the next season of play like Brandon Pirri, Brandeon Hagel, Zach Parise, Evgeni Malkin, and Sidney Crosby. However, many of these players with high predicted probability of breaking out do not end up having breakout seasons the following year like Marian Studenic, Miikka Salomaki, Nick Paul and Evan Rodrigues.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb55"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb55-1"><a href="#cb55-1" aria-hidden="true" tabindex="-1"></a><span class="co">#get players</span></span>
 <span id="cb55-2"><a href="#cb55-2" aria-hidden="true" tabindex="-1"></a>predicted_breakouts <span class="ot">&lt;-</span> test <span class="sc">%&gt;%</span> </span>
@@ -1071,9 +1125,12 @@ predicted    0    1
 </section>
 <section id="limitations" class="level2">
 <h2 class="anchored" data-anchor-id="limitations">6 Limitations</h2>
+<p>One of the most obvious limitations of this paper is omitted variable bias. One such omitted variable could be player compatibility. Hockey players take extremely short shifts, and practice together for extended amounts of time, so their productivity may differ depending on how they are on a line with. This study fails to acknowledge the important aspect that some players simply work better together than others, and coaching decision and quality to execute good lines proves to be another omitted variable. Applied to this study, player compatibility would impact both the breakout rate, as players will play better if they are working with those they have a connection with, and considering the OVB formula α1 = β1 + β2γ1, the sign of , β2 is likely positive. In addition, player compatibility is correlated with a regressor of interest, like shots per game, given that if you are playing with someone you gel well with, there can be an aspect of telephathy where one player knows where the other will be before they are even there allowing for heightened passing and shooting opportunites, and γ1 to have a positive sign. All of this considered, the net effect of β2γ1 is positive, and then we have overstated the true effect, estimating an effect (α1) larger in magnitude than that of the true effect (β1).</p>
+<p>It is also important to note that we do not have a complete understanding of the model MoneyPuck uses to generate an expected goals value. Tanner specifices <strong>that the model</strong> determines this variable via computing the chance that an unblocked shot attempt becomes a goal. For instance, 0.5 expected goals could come from a rebound shot in the slot that has a 50% chance of becoming a goal. and 0.01 expected goals could result from a shot from the blueline while short handed. Ultimately, while compelling, the information stemming from this variable must be interpreted with a grain of salt given the lack of total understanding of its creation.</p>
 </section>
 <section id="conclusion" class="level2">
 <h2 class="anchored" data-anchor-id="conclusion">7 Conclusion</h2>
+<p>Finally, this paper seeked to explore whether one could predict what players in the NHL will have a breakout season in the following year using statistic performance data from a given season. We conclude that this process is possible, although extremely challenging to do accurately. Given the substantial amount of variables difficult to quantify and potential confounding factors, its important to acknowledge the relevant limitations of the model.</p>
 </section>
 </section>
 
