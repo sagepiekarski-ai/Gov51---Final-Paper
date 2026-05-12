@@ -34,6 +34,8 @@ We find that across three tested models an OLS Baseline, Logit, and LASSO, the L
 
 ### 2.1 The MONEYPUCK Dataset
 
+<https://moneypuck.com/data.htm>
+
 The data used in this project comes from the MoneyPuck dataset. MoneyPuck data and its models were compiled and put together by Peter Tanner. The data used in this project consists of season-level data from the 2008/2009 season to the 2024/2025 season. We evaluate all players who played greater than zero games, and who were identified as skaters.
 
 The dataset contains 76,655 observations across 154 variables and each unit of observation is a player-season.
